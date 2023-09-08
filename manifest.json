@@ -1,0 +1,10 @@
+{
+  "name": "tags-ext",
+  "version": "1.0",
+  "manifest_version": 3,
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "permissions": ["scripting", "tabs"],
+  "host_permissions": ["<all_urls>"]
+}
