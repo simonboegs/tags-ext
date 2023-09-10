@@ -1,7 +1,8 @@
 "use strict";
 
 async function getTabId() {
-  const tabs = await chrome.tabs.query({active: true})
+  const tabs = await chrome.tabs.query({active: true, lastFocusedWindow: true})
+  console.log(tabs.length)
   return tabs[0].id
 }
 
@@ -43,13 +44,12 @@ function parse(source) {
     ["h6", "h6", "innerText"],
     ["p", "p", "innerText"],
   ];
-  let arr = [["Element", "Value"]];
-  tags.forEach((item) => {
-    arr = arr.concat(getTag(doc, item[0], item[1], item[2]));
-  });
-  console.log(arr);
+  // we have tags as the keys.... but there are multiple tags OBV
+  // are there any tags where we might want different properties?
+  // we definitely want names
+  const results = getTags(doc);
 
-  let csvContent = arrayToCsv(arr);
+  const csvContent = arrayToCsv(results);
 
   downloadBlob(csvContent, 'export.csv', 'text/csv;charset=utf-8;');
 }
@@ -81,6 +81,7 @@ function getTag(doc, name, selector, attr) {
   try {
     const elements = doc.querySelectorAll(selector);
     for (let i = 0; i < elements.length; i++) {
+      console.log(elements[i].tagName);
       arr.push([name, elements[i][attr]]);
     }
   }
@@ -89,4 +90,88 @@ function getTag(doc, name, selector, attr) {
     console.log(`error finding ${name}`);
   }
   return arr;
+}
+
+function getTags(doc) {
+  let results = [["Name", "Value"]];
+  let selectors = [
+    'meta[name="title"]',
+    'meta[property="title"]',
+    'meta[name="description"]',
+    'meta[property="description"]',
+    'meta[name="og:image"]',
+    'meta[property="og:image"]',
+    'meta[name="og:image:alt"]',
+    'meta[property="og:image:alt"]',
+    'meta[name="og:type"]',
+    'meta[property="og:type"]',
+    'meta[name="og:title"]',
+    'meta[property="og:title"]',
+    'meta[name="og:description"]',
+    'meta[property="og:description"]',
+    'p',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6'
+  ];
+  const elements = doc.querySelectorAll(selectors.join(", "))
+  for (let i = 0; i < elements.length; i++) {
+    const tagName = elements[i].tagName.toLowerCase();
+    let name;
+    let value;
+    if (tagName === "meta") {
+      let metaType;
+      if (elements[i].getAttribute("name") != null) {
+        metaType = elements[i].getAttribute("name");
+      }
+      else if(elements[i].getAttribute("property") != null) {
+        metaType = elements[i].getAttribute("property");
+      }
+      switch(metaType) {
+        case "title":
+          name = "meta title";
+          break;
+        case "description":
+          name = "meta description";
+          break;
+        case "og:image":
+          name = "og:image";
+          break;
+        case "og:image:alt":
+          name = "og:image:alt";
+          break;
+        case "og:description":
+          name = "og:description";
+          break;
+        case "og:title":
+          name = "og:title";
+          break;
+        case "og:type":
+          name = "og:type"
+          break;
+      }
+      value = elements[i].content;
+    }
+    else if (tagName == "title") {
+      name = tagName; 
+      value = elements[i].innerText;
+    }
+    else if (tagName == "p" || tagName == "h1" || tagName == "h2" || tagName == "h3" || tagName == "h4" || tagName == "h5" || tagName == "h6"){
+      name = tagName;
+      value = elements[i].innerText;
+    }
+    else if (tagName == "link") {
+      name = "canonical"
+      value = elements[i].href;
+    }
+    else {
+      console.log(`tagName ${tagName} not covered`);
+      continue;
+    }
+    results.push([name, value]);
+  }
+  return results;
 }
