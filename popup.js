@@ -1,57 +1,45 @@
 "use strict";
-
-async function getTabId() {
-  const tabs = await chrome.tabs.query({active: true, lastFocusedWindow: true})
-  console.log(tabs.length)
-  return tabs[0].id
-}
-
-function getTitle() {
-  return document.documentElement.outerHTML;
-}
-
-document.getElementById("exportBtn").addEventListener("click", async () => {
-  console.log("print");
-  const tabId = await getTabId();
+let data = [];
+(async () => {
+  const tab = await getTab();
   chrome.scripting.executeScript({
-    target: {tabId: tabId},
-    func: getTitle
+    target: {tabId: tab.id},
+    func: () => document.documentElement.outerHTML
   })
   .then((results) => {
+    console.log(tab);
     const result = results[0].result;
-    parse(result);
+    data = parse(result, tab);
+
+    // show data in table
+    const tableBody = document.getElementById("tbody");
+    data.forEach((row) => {
+      console.log(row);
+      const newRow = tableBody.insertRow(-1);
+      row.forEach((el) => {
+        const newCell = newRow.insertCell();
+        newCell.innerText = el;
+      })
+    })
   });
+})();
+
+document.getElementById("exportBtn").addEventListener("click", async () => {
+  const csvContent = arrayToCsv(data);
+  downloadBlob(csvContent, 'export.csv', 'text/csv;charset=utf-8;');
 });
 
+async function getTab() {
+  const tabs = await chrome.tabs.query({active: true, currentWindow: true})
+  console.log(tabs);
+  return tabs[0];
+}
 
-function parse(source) {
+function parse(source, tab) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(source, 'text/html');
-  const tags = [
-    ["title", 'title', "innerText"],
-    ["link", 'link[rel="canonical"]', "href"],
-    ["meta title", 'meta[name="title"]', "content"],
-    ["meta description", 'meta[name="description"]', "content"],
-    ["og:image", 'meta[name="og:image"], meta[property="og:image"]', "content"],
-    ["og:description", 'meta[name="og:description"], meta[property="og:description"]', "content"],
-    ["og:type", 'meta[name="og:type"], meta[property="og:type"]', "content"],
-    ["og:image:alt", 'meta[name="og:image:alt"], meta[property="og:image:alt"]', "content"],
-    ["h1", "h1", "innerText"],
-    ["h2", "h2", "innerText"],
-    ["h3", "h3", "innerText"],
-    ["h4", "h4", "innerText"],
-    ["h5", "h5", "innerText"],
-    ["h6", "h6", "innerText"],
-    ["p", "p", "innerText"],
-  ];
-  // we have tags as the keys.... but there are multiple tags OBV
-  // are there any tags where we might want different properties?
-  // we definitely want names
-  const results = getTags(doc);
-
-  const csvContent = arrayToCsv(results);
-
-  downloadBlob(csvContent, 'export.csv', 'text/csv;charset=utf-8;');
+  const results = getTags(doc, tab);
+  return results;
 }
 
 function arrayToCsv(data){
@@ -92,7 +80,7 @@ function getTag(doc, name, selector, attr) {
   return arr;
 }
 
-function getTags(doc) {
+function getTags(doc, tab) {
   let results = [["Name", "Value"]];
   let selectors = [
     'meta[name="title"]',
@@ -115,13 +103,16 @@ function getTags(doc) {
     'h3',
     'h4',
     'h5',
-    'h6'
+    'h6',
+    'img',
+    'a'
   ];
   const elements = doc.querySelectorAll(selectors.join(", "))
   for (let i = 0; i < elements.length; i++) {
     const tagName = elements[i].tagName.toLowerCase();
     let name;
     let value;
+    let value2;
     if (tagName === "meta") {
       let metaType;
       if (elements[i].getAttribute("name") != null) {
@@ -163,15 +154,34 @@ function getTags(doc) {
       name = tagName;
       value = elements[i].innerText;
     }
+    // link doesnt have to be canon here!! could be something else
     else if (tagName == "link") {
       name = "canonical"
       value = elements[i].href;
+    }
+    else if (tagName == "img") {
+      name = "img";
+      value = elements[i].src;
+      if ("alt" in elements[i]) {
+        value2 = elements[i].alt;
+      }
+    }
+    else if (tagName == "a") {
+      name = "a";
+      value = elements[i].innerText;
+      value2 = elements[i].href.replace("chrome-extension://cchkopnegjlfcookgebmkoocninlodlm/", tab.url);
     }
     else {
       console.log(`tagName ${tagName} not covered`);
       continue;
     }
-    results.push([name, value]);
+
+    if (value2) {
+      results.push([name, value, value2]);
+    }
+    else {
+      results.push([name, value]);
+    }
   }
   return results;
 }
