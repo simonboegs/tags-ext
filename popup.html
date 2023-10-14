@@ -4,11 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
-  <link href=""
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body style="width: 700px;">
+<body style="width: 800px;">
   <button id="exportBtn">Export</button>
+  <div>
+    <label for="a-checkbox">Include a tags</label>
+    <input type="checkbox" id="a-checkbox" />
+  </div>
   <table id="table">
+    <thead>
+      <tr>
+        <th style="width: 10%"></th>
+        <th style="width: 70%"></th>
+        <th></th>
+      </tr>
+    </thead>
     <tbody id="tbody">
     </tbody>
   </table>
