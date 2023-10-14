@@ -98,6 +98,7 @@ function getTags(doc, tab) {
     ["LANG", ""],
     [""],
     ["Essential Meta Tags"],
+    ["Title",""],
     ["Meta Title", ""],
     ["Meta Description", ""],
     ["Canonical URL", ""],
@@ -120,6 +121,7 @@ function getTags(doc, tab) {
   let selectors = [
     'html',
     'meta',
+    'title',
     // 'meta[name="title"]',
     // 'meta[property="title"]',
     // 'meta[name="description"]',
@@ -210,11 +212,11 @@ function getTags(doc, tab) {
       value = elements[i].content;
       requiredValue = true;
     }
-    // else if (tagName == "title") {
-    //   name = tagName; 
-    //   value = elements[i].innerText;
-    //   requiredValue = true;
-    // }
+    else if (tagName == "title") {
+      name = "Title";
+      value = elements[i].innerText;
+      requiredValue = true;
+    }
     else if (tagName == "p" || tagName == "h1" || tagName == "h2" || tagName == "h3" || tagName == "h4" || tagName == "h5" || tagName == "h6"){
       name = tagName;
       value = elements[i].innerText;
